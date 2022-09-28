@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="fd9b990f-a017-46a3-b4a1-b86744743799" basePath="/secure-flow" >
+		<http:listener-connection host="0.0.0.0" port="${secure::http.port}" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="4f24e279-3699-4744-958d-cdb242861fe3" >
+		<db:oracle-connection host="${secure::db.host}" port="${secure::db.port}" user="${secure::db.user}" password="${secure::db.password}" instance="xe" />
+	</db:config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="1bb193b9-cacd-46a8-a75a-adb95ea20791" file="enc-${env}.yaml" key="12345678password" />
+	<flow name="secure-mule-database-dynamic-queryFlow" doc:id="b51ccc00-210b-4753-b32e-74e52d11fc1d" >
+		<http:listener doc:name="Listener" doc:id="71ef137b-9b9e-4675-b052-5b144b0597c0" config-ref="HTTP_Listener_config" path="/flow1" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="c55ca197-40c4-4b94-ac3e-a7b43c736752" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id: attributes.queryParams.id
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:id="2ed97eaf-b2e5-4595-9fea-13b672f343dc" config-ref="Database_Config" doc:name="Insert" >
+			<db:sql ><![CDATA[insert into secure_database_insert (id) values (:id)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"id": payload.id
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="c20d4085-db0b-4fe6-8e81-a778440a965f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
